@@ -11,7 +11,7 @@ export class TasksService {
   ): Promise<Task | null> {
     return this.prisma.task.findUnique({
       where: taskWhereUniqueInput,
-      include: { author: true },
+      include: { owner: true },
     });
   }
 
@@ -29,7 +29,7 @@ export class TasksService {
       cursor,
       where,
       orderBy,
-      include: { author: true },
+      include: { owner: true },
     });
   }
 
