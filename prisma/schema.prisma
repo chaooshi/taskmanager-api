@@ -34,7 +34,7 @@ model Task {
   ownerId     String
   column      Column   @relation(fields: [columnId], references: [id], onDelete: Cascade)
   columnId    Int
-  order       Int
+  order       Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
