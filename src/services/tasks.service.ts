@@ -33,10 +33,10 @@ export class TasksService {
     });
   }
 
-  async createTask(data: Prisma.TaskCreateInput): Promise<Task> {
+  async createTask(data: Prisma.TaskUncheckedCreateInput): Promise<Task> {
     // find last order number in this column
     const lastTask = await this.prisma.task.findFirst({
-      where: { columnId: data.column.connect?.id },
+      where: { columnId: data.columnId },
       orderBy: { order: 'desc' },
     });
 

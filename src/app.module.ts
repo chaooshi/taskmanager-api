@@ -8,6 +8,7 @@ import { TasksService } from './services/tasks.service';
 import { TaskController } from './controllers/task.controller';
 import { UserController } from './controllers/user.controller';
 import { ColumnController } from './controllers/column.controller';
+import { ColumnService } from './services/column.service';
 
 @Module({
   imports: [],
@@ -17,6 +18,12 @@ import { ColumnController } from './controllers/column.controller';
     UserController,
     ColumnController,
   ],
-  providers: [AppService, PrismaService, UsersService, TasksService],
+  providers: [
+    AppService,
+    PrismaService,
+    UsersService,
+    TasksService,
+    ColumnService,
+  ],
 })
 export class AppModule {}

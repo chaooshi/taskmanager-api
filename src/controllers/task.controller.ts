@@ -4,8 +4,8 @@ import {
   Delete,
   Get,
   Param,
-  Patch,
   Post,
+  Put,
   Query,
 } from '@nestjs/common';
 import { Task, Prisma } from 'generated/prisma';
@@ -42,12 +42,14 @@ export class TaskController {
 
   // Create a new task
   @Post()
-  async createTask(@Body() data: Prisma.TaskCreateInput): Promise<Task> {
+  async createTask(
+    @Body() data: Prisma.TaskUncheckedCreateInput,
+  ): Promise<Task> {
     return this.tasksService.createTask(data);
   }
 
   // Update an existing task
-  @Patch(':id')
+  @Put(':id')
   async updateTask(
     @Param('id') id: string,
     @Body() data: Prisma.TaskUpdateInput,
@@ -62,17 +64,17 @@ export class TaskController {
   }
 
   // Reorder tasks within a column
-  @Patch('reorder/:columnId')
+  @Put('reorder/:columnId')
   async reorderTasks(
     @Param('columnId') columnId: number,
     @Body('orderedTaskIds') orderedTaskIds: string[],
   ) {
-    await this.tasksService.reorderTasks(columnId, orderedTaskIds);
+    await this.tasksService.reorderTasks(Number(columnId), orderedTaskIds);
     return { success: true };
   }
 
   // Bulk move tasks to another column
-  @Patch('bulk-move')
+  @Put('actions/bulk-move')
   async bulkMoveTasks(
     @Body() body: { taskIds: string[]; targetColumnId: number },
   ) {
