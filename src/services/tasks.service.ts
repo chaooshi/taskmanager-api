@@ -1,10 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from './prisma.service';
 import { Task, Prisma } from 'generated/prisma';
+import { MailService } from './mail.service';
 
 @Injectable()
 export class TasksService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly mailService: MailService,
+  ) {}
 
   async task(
     taskWhereUniqueInput: Prisma.TaskWhereUniqueInput,
@@ -55,10 +59,29 @@ export class TasksService {
     data: Prisma.TaskUpdateInput;
   }): Promise<Task> {
     const { where, data } = params;
-    return this.prisma.task.update({
+    // Fetch existing task (to know its current column)
+    const existingTask = await this.prisma.task.findUnique({
+      where,
+      include: { column: true },
+    });
+
+    // Update the task
+    const updatedTask = await this.prisma.task.update({
       where,
       data,
+      include: { column: true },
     });
+
+    // If column changed, check whether new column is "COMPLETED"
+    if (
+      data.column &&
+      existingTask?.column.state !== 'COMPLETED' &&
+      updatedTask.column.state === 'COMPLETED'
+    ) {
+      await this.mailService.sendTaskCompletionEmail(updatedTask);
+    }
+
+    return updatedTask;
   }
 
   async deleteTask(where: Prisma.TaskWhereUniqueInput): Promise<Task> {
@@ -105,11 +128,14 @@ export class TasksService {
     });
     let nextOrder = (lastTaskInDest?.order ?? 0) + 1;
 
-    // Move tasks to destination column
+    // Move tasks to destination column using existing updateTask logic
     for (const task of tasksToMove) {
-      await this.prisma.task.update({
+      await this.updateTask({
         where: { id: task.id },
-        data: { columnId: targetColumnId, order: nextOrder },
+        data: {
+          column: { connect: { id: targetColumnId } },
+          order: nextOrder,
+        },
       });
       nextOrder++;
     }

@@ -9,9 +9,25 @@ import { TaskController } from './controllers/task.controller';
 import { UserController } from './controllers/user.controller';
 import { ColumnController } from './controllers/column.controller';
 import { ColumnService } from './services/column.service';
+import { MailerModule } from '@nestjs-modules/mailer';
+import { MailService } from './services/mail.service';
 
 @Module({
-  imports: [],
+  imports: [
+    MailerModule.forRoot({
+      transport: {
+        host: process.env.MAILTRAP_HOST,
+        port: Number(process.env.MAILTRAP_PORT) || 2525,
+        auth: {
+          user: process.env.MAILTRAP_USER,
+          pass: process.env.MAILTRAP_PASS,
+        },
+      },
+      defaults: {
+        from: process.env.DEFAULT_FROM,
+      },
+    }),
+  ],
   controllers: [
     AppController,
     TaskController,
@@ -24,6 +40,7 @@ import { ColumnService } from './services/column.service';
     UsersService,
     TasksService,
     ColumnService,
+    MailService,
   ],
 })
 export class AppModule {}
