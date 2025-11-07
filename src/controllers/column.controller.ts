@@ -4,8 +4,9 @@ import {
   Delete,
   Get,
   Param,
-  Patch,
+  ParseIntPipe,
   Post,
+  Put,
 } from '@nestjs/common';
 
 import { Column, Prisma } from 'generated/prisma';
@@ -23,7 +24,9 @@ export class ColumnController {
 
   // Get a single column by ID
   @Get(':id')
-  async getColumn(@Param('id') id: number): Promise<Column | null> {
+  async getColumn(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<Column | null> {
     return this.columnService.column({ id });
   }
 
@@ -34,9 +37,9 @@ export class ColumnController {
   }
 
   // Update a column
-  @Patch(':id')
+  @Put(':id')
   async updateColumn(
-    @Param('id') id: number,
+    @Param('id', ParseIntPipe) id: number,
     @Body() data: Prisma.ColumnUpdateInput,
   ): Promise<Column> {
     return this.columnService.updateColumn({ where: { id }, data });
@@ -44,7 +47,7 @@ export class ColumnController {
 
   // Delete a column
   @Delete(':id')
-  async deleteColumn(@Param('id') id: number): Promise<Column> {
+  async deleteColumn(@Param('id', ParseIntPipe) id: number): Promise<Column> {
     return this.columnService.deleteColumn({ id });
   }
 }

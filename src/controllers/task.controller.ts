@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  ParseIntPipe,
   Post,
   Put,
   Query,
@@ -66,10 +67,10 @@ export class TaskController {
   // Reorder tasks within a column
   @Put('reorder/:columnId')
   async reorderTasks(
-    @Param('columnId') columnId: number,
+    @Param('columnId', ParseIntPipe) columnId: number,
     @Body('orderedTaskIds') orderedTaskIds: string[],
   ) {
-    await this.tasksService.reorderTasks(Number(columnId), orderedTaskIds);
+    await this.tasksService.reorderTasks(columnId, orderedTaskIds);
     return { success: true };
   }
 
