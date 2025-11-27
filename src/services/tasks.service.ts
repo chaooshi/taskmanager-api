@@ -3,6 +3,10 @@ import { PrismaService } from './prisma.service';
 import { Task, Prisma } from 'generated/prisma';
 import { MailService } from './mail.service';
 
+type TaskWithOwner = Prisma.TaskGetPayload<{
+  include: { owner: true };
+}>;
+
 @Injectable()
 export class TasksService {
   constructor(
@@ -12,7 +16,7 @@ export class TasksService {
 
   async task(
     taskWhereUniqueInput: Prisma.TaskWhereUniqueInput,
-  ): Promise<Task | null> {
+  ): Promise<TaskWithOwner | null> {
     return this.prisma.task.findUnique({
       where: taskWhereUniqueInput,
       include: { owner: true },
@@ -25,7 +29,7 @@ export class TasksService {
     cursor?: Prisma.TaskWhereUniqueInput;
     where?: Prisma.TaskWhereInput;
     orderBy?: Prisma.TaskOrderByWithRelationInput;
-  }): Promise<Task[]> {
+  }): Promise<TaskWithOwner[]> {
     const { skip, take, cursor, where, orderBy } = params;
     return this.prisma.task.findMany({
       skip,
@@ -49,7 +53,7 @@ export class TasksService {
     return this.prisma.task.create({
       data: {
         ...data,
-        order: nextOrder,
+        order: data.order ?? nextOrder,
       },
     });
   }

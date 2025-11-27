@@ -9,8 +9,18 @@ import {
   Put,
   Query,
 } from '@nestjs/common';
-import { Task, Prisma } from 'generated/prisma';
+import { Prisma } from 'generated/prisma';
 import { TasksService } from 'src/services/tasks.service';
+import {
+  CreateTaskDto,
+  UpdateTaskDto,
+  TaskResponseDto,
+  TaskWithOwnerResponseDto,
+} from '../dto/task.dto';
+import {
+  mapToTaskResponseDto,
+  mapToTaskWithOwnerResponseDto,
+} from '../dto/mappers/task.mapper';
 
 @Controller('task')
 export class TaskController {
@@ -18,8 +28,11 @@ export class TaskController {
 
   // Get a single task by unique identifier
   @Get(':id')
-  async getTask(@Param('id') id: string): Promise<Task | null> {
-    return this.tasksService.task({ id });
+  async getTask(
+    @Param('id') id: string,
+  ): Promise<TaskWithOwnerResponseDto | null> {
+    const task = await this.tasksService.task({ id });
+    return task ? mapToTaskWithOwnerResponseDto(task) : null;
   }
 
   // Get multiple tasks with optional filters, pagination, and ordering
@@ -30,38 +43,57 @@ export class TaskController {
     @Query('cursor') cursor?: string,
     @Query('orderBy') orderBy?: Prisma.TaskOrderByWithRelationInput,
     @Query('where') where?: Prisma.TaskWhereInput,
-  ): Promise<Task[]> {
+  ): Promise<TaskWithOwnerResponseDto[]> {
     const cursorObj = cursor ? { id: cursor } : undefined;
-    return this.tasksService.tasks({
+    const tasks = await this.tasksService.tasks({
       skip,
       take,
       cursor: cursorObj,
       where,
       orderBy,
     });
+    return tasks.map(mapToTaskWithOwnerResponseDto);
   }
 
   // Create a new task
   @Post()
-  async createTask(
-    @Body() data: Prisma.TaskUncheckedCreateInput,
-  ): Promise<Task> {
-    return this.tasksService.createTask(data);
+  async createTask(@Body() data: CreateTaskDto): Promise<TaskResponseDto> {
+    const task = await this.tasksService.createTask(data);
+    return mapToTaskResponseDto(task);
   }
 
   // Update an existing task
   @Put(':id')
   async updateTask(
     @Param('id') id: string,
-    @Body() data: Prisma.TaskUpdateInput,
-  ): Promise<Task> {
-    return this.tasksService.updateTask({ where: { id }, data });
+    @Body() data: UpdateTaskDto,
+  ): Promise<TaskResponseDto> {
+    const updateData: Prisma.TaskUpdateInput = {
+      title: data.title,
+      description: data.description,
+      order: data.order,
+    };
+
+    if (data.ownerId) {
+      updateData.owner = { connect: { id: data.ownerId } };
+    }
+
+    if (data.columnId !== undefined) {
+      updateData.column = { connect: { id: data.columnId } };
+    }
+
+    const task = await this.tasksService.updateTask({
+      where: { id },
+      data: updateData,
+    });
+    return mapToTaskResponseDto(task);
   }
 
   // Delete a task
   @Delete(':id')
-  async deleteTask(@Param('id') id: string): Promise<Task> {
-    return this.tasksService.deleteTask({ id });
+  async deleteTask(@Param('id') id: string): Promise<TaskResponseDto> {
+    const task = await this.tasksService.deleteTask({ id });
+    return mapToTaskResponseDto(task);
   }
 
   // Reorder tasks within a column

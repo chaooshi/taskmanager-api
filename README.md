@@ -14,12 +14,14 @@ It also includes a **Mailtrap-integrated mailing service** to handle completion 
 
 1. [Tech Stack](#-tech-stack)
 2. [Project Structure](#-project-structure)
-3. [Controllers](#-controllers)
-4. [Services](#-services)
-5. [Database & Prisma](#-database--prisma)
-6. [Mail Configuration](#-mail-configuration)
-7. [How to Run the Project](#-how-to-run-the-project)
-8. [Future Improvements](#-future-improvements)
+3. [Architecture](#-architecture)
+4. [Controllers](#-controllers)
+5. [Services](#-services)
+6. [DTOs & Mappers](#-dtos--mappers)
+7. [Database & Prisma](#-database--prisma)
+8. [Mail Configuration](#-mail-configuration)
+9. [How to Run the Project](#-how-to-run-the-project)
+10. [Future Improvements](#-future-improvements)
 
 ---
 
@@ -61,6 +63,15 @@ nest-first/
 │   │   ├── tasks.service.ts
 │   │   └── users.service.ts
 │   │
+│   ├── dto/                   # Data Transfer Layer (DTOs and mappers)
+│   │   ├── column.dto.ts      # Column data transfer objects
+│   │   ├── task.dto.ts        # Task data transfer objects
+│   │   ├── user.dto.ts        # User data transfer objects
+│   │   └── mappers/           # Transform Prisma models to DTOs
+│   │       ├── column.mapper.ts
+│   │       ├── task.mapper.ts
+│   │       └── user.mapper.ts
+│   │
 │   ├── app.module.ts          # Root module registering all controllers and services
 │   └── main.ts                # Application entry point
 │
@@ -70,6 +81,40 @@ nest-first/
 └── README.md
 
 ```
+
+---
+
+## 🏗️ Architecture
+
+This project follows a **clean layered architecture** with clear separation of concerns:
+
+### **Controllers Layer**
+
+- Handle HTTP requests and responses
+- Accept and return **DTOs** (Data Transfer Objects)
+- Use **mappers** to convert between DTOs and Prisma models
+- No direct exposure of database models to clients
+
+### **Service Layer**
+
+- Contains business logic
+- Works with **Prisma types** directly
+- No knowledge of DTOs
+- Returns Prisma models with proper type definitions
+
+### **Data Transfer Layer**
+
+- **DTOs**: Define the shape of request/response data
+- **Mappers**: Transform Prisma models to DTOs in controllers
+- Provides clean API contracts independent of database structure
+- Grouped together in `dto/` directory for better cohesion - DTOs and their mappers are tightly coupled
+
+This architecture ensures:
+
+- ✅ **Decoupling** between API and database layers
+- ✅ **Type safety** throughout the application
+- ✅ **Easy maintenance** - change database without affecting API
+- ✅ **Security** - control exactly what data is exposed
 
 ---
 
@@ -153,6 +198,118 @@ _Click the image to view full size._
 ### `app.service.ts`
 
 - High-level shared or app-wide logic (currently minimal).
+
+---
+
+## 📦 DTOs & Mappers
+
+### **DTOs (Data Transfer Objects)**
+
+DTOs define the structure of data sent to and received from the API, providing a clean contract between the client and server.
+
+**Location**: `src/dto/`
+
+**Example - Task DTOs**:
+
+```typescript
+// Request DTOs (used in POST/PUT requests)
+export class CreateTaskDto {
+  title: string;
+  description?: string;
+  ownerId: string;
+  columnId: number;
+  order?: number;
+}
+
+export class UpdateTaskDto {
+  title?: string;
+  description?: string;
+  ownerId?: string;
+  columnId?: number;
+  order?: number;
+}
+
+// Response DTOs (returned from API)
+export interface TaskResponseDto {
+  id: string;
+  title: string;
+  description: string | null;
+  ownerId: string;
+  columnId: number;
+  order: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface TaskWithOwnerResponseDto extends TaskResponseDto {
+  owner: {
+    id: string;
+    email: string;
+    name: string | null;
+    lastName: string | null;
+  };
+}
+```
+
+### **Mappers**
+
+Mappers are pure functions that transform Prisma models into DTOs. They are used exclusively in controllers.
+
+**Location**: `src/dto/mappers/`
+
+**Example - Task Mappers**:
+
+```typescript
+export function mapToTaskResponseDto(task: Task): TaskResponseDto {
+  return {
+    id: task.id,
+    title: task.title,
+    description: task.description,
+    ownerId: task.ownerId,
+    columnId: task.columnId,
+    order: task.order,
+    createdAt: task.createdAt,
+    updatedAt: task.updatedAt,
+  };
+}
+
+export function mapToTaskWithOwnerResponseDto(
+  task: Task & { owner: User },
+): TaskWithOwnerResponseDto {
+  return {
+    ...mapToTaskResponseDto(task),
+    owner: {
+      id: task.owner.id,
+      email: task.owner.email,
+      name: task.owner.name,
+      lastName: task.owner.lastName,
+    },
+  };
+}
+```
+
+**Usage in Controllers**:
+
+```typescript
+@Get(':id')
+async getTask(@Param('id') id: string): Promise<TaskWithOwnerResponseDto | null> {
+  const task = await this.tasksService.task({ id });
+  return task ? mapToTaskWithOwnerResponseDto(task) : null;
+}
+
+@Post()
+async createTask(@Body() data: CreateTaskDto): Promise<TaskResponseDto> {
+  const task = await this.tasksService.createTask(data);
+  return mapToTaskResponseDto(task);
+}
+```
+
+**Benefits**:
+
+- 🔒 **Security**: Control exactly what data is exposed to clients
+- 🎯 **Type Safety**: Strong typing for request/response contracts
+- 🔄 **Flexibility**: Change database schema without breaking API
+- 📝 **Documentation**: Clear API structure for frontend developers
 
 ---
 
@@ -262,8 +419,8 @@ npm run start:dev
 
 ## 🔮 Future Improvements
 
-- **Use DTOs for data validation and security**  
-  Instead of exposing database models directly, create DTOs to control exactly what data is sent to and received from clients.
+- **Add validation decorators to DTOs**  
+  Use `class-validator` to validate request data automatically (e.g., `@IsEmail()`, `@IsNotEmpty()`, `@MinLength()`).
 
 - **Add authentication and user-specific task filtering**  
   Ensure users can only see and modify their own tasks.
@@ -276,3 +433,6 @@ npm run start:dev
 
 - **Add logging and error tracking**  
   Improve debugging and monitoring of the application.
+
+- **Add API documentation with Swagger**  
+  Generate interactive API docs using `@nestjs/swagger` decorators.

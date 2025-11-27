@@ -2,18 +2,24 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from './prisma.service';
 import { Column, Prisma } from 'generated/prisma';
 
+type ColumnWithTasks = Prisma.ColumnGetPayload<{
+  include: { tasks: true };
+}>;
+
 @Injectable()
 export class ColumnService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async column(where: Prisma.ColumnWhereUniqueInput): Promise<Column | null> {
+  async column(
+    where: Prisma.ColumnWhereUniqueInput,
+  ): Promise<ColumnWithTasks | null> {
     return this.prisma.column.findUnique({
       where,
       include: { tasks: true },
     });
   }
 
-  async columns(): Promise<Column[]> {
+  async columns(): Promise<ColumnWithTasks[]> {
     return this.prisma.column.findMany({
       include: { tasks: true },
       orderBy: { id: 'asc' },
